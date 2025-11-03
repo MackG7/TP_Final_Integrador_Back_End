@@ -1,0 +1,108 @@
+import asyncHandler from "express-async-handler";
+import User from "../models/User.model.js";
+import generateToken from "../utils/generateToken.js";
+
+// @desc    Registrar nuevo usuario
+// @route   POST /api/users
+// @access  Público
+export const registerUser = async (req, res) => {
+    try {
+        const { name, email, password } = req.body;
+
+        if (!name || !email || !password) {
+            return res.status(400).json({ message: "Faltan datos" });
+        }
+
+        // ejemplo: simular creación del usuario
+        console.log("🆕 Registrando usuario:", name, email);
+
+        return res.status(201).json({
+            message: "Usuario registrado correctamente",
+            user: { name, email },
+        });
+    } catch (error) {
+        console.error("Error en registerUser:", error);
+        res.status(500).json({ message: "Error interno del servidor" });
+    }
+};
+
+// @desc    Login de usuario
+// @route   POST /api/users/login
+// @access  Público
+const authUser = asyncHandler(async (req, res) => {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
+
+    if (user && (await user.matchPassword(password))) {
+        res.json({
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            token: generateToken(user._id),
+        });
+    } else {
+        res.status(401);
+        throw new Error("Email o contraseña incorrectos");
+    }
+});
+
+// @desc    Obtener perfil del usuario
+// @route   GET /api/users/profile
+// @access  Privado
+const getUserProfile = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user._id);
+
+    if (user) {
+        res.json({
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+        });
+    } else {
+        res.status(404);
+        throw new Error("Usuario no encontrado");
+    }
+});
+
+// @desc    Actualizar perfil del usuario
+// @route   PUT /api/users/profile
+// @access  Privado
+const updateUserProfile = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user._id);
+
+    if (user) {
+        user.name = req.body.name || user.name;
+        user.email = req.body.email || user.email;
+        if (req.body.password) {
+            user.password = req.body.password;
+        }
+
+        const updatedUser = await user.save();
+
+        res.json({
+            _id: updatedUser._id,
+            name: updatedUser.name,
+            email: updatedUser.email,
+            token: generateToken(updatedUser._id),
+        });
+    } else {
+        res.status(404);
+        throw new Error("Usuario no encontrado");
+    }
+});
+
+// @desc    Obtener todos los usuarios (solo admin)
+// @route   GET /api/users
+// @access  Privado/Admin
+const getAllUsers = asyncHandler(async (req, res) => {
+    const users = await User.find({});
+    res.json(users);
+});
+
+export {
+    // registerUser,
+    authUser,
+    getUserProfile,
+    updateUserProfile,
+    getAllUsers,
+};
