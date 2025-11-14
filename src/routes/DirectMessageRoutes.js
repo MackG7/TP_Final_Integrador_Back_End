@@ -1,5 +1,5 @@
 import { Router } from "express";
-import DirectMessageController from "../controllers/directMessageController.js";
+import DirectMessageController from "../controllers/DirectMessageController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
 const router = Router();

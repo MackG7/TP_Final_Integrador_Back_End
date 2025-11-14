@@ -1,4 +1,4 @@
-import DirectMessageRepository from "../repositories/directMessageRepository.js";
+import DirectMessageRepository from "../repositories/DirectMessageRepository.js";
 
 class DirectMessageController {
 

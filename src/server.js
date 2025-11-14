@@ -14,7 +14,7 @@ import chatRoutes from "./routes/chatRoutes.js";
 import groupRoutes from "./routes/groupRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import memberRoutes from "./routes/memberRoutes.js";
-import DirectMessageRoutes from "./routes/directMessageRoutes.js";
+import DirectMessageRoutes from "./routes/DirectMessageRoutes.js";
 import inviteRoutes from "./routes/inviteRoutes.js";
 
 dotenv.config();
