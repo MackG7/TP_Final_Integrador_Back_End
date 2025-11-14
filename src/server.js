@@ -14,7 +14,7 @@ import chatRoutes from "./routes/chatRoutes.js";
 import groupRoutes from "./routes/groupRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import memberRoutes from "./routes/memberRoutes.js";
-import directMessageRoutes from "./routes/directMessageRoutes.js";
+import DirectMessageRoutes from "./routes/directMessageRoutes.js";
 import inviteRoutes from "./routes/inviteRoutes.js";
 
 dotenv.config();
@@ -36,7 +36,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/groups", groupRoutes);   
-app.use("/api/direct-message", directMessageRoutes);
+app.use("/api/direct-message", DirectMessageRoutes);
 app.use("/api/chat", chatRoutes);  
 app.use("/api/contacts", contactRoutes); 
 app.use("/api/group-message", groupMessageRoutes);
