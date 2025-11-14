@@ -1,190 +1,292 @@
-import AuthService from "../services/authService.js";
-import ENVIRONMENT from '../config/environment.config.js';
-import jwt from 'jsonwebtoken';
-import User from '../models/User.model.js';
+import AuthService from '../services/authService.js';
+import UserRepository from '../repositories/userRepository.js'; 
+import { ServerError } from '../utils/customError.utils.js';
 
-export const registerUser = async (req, res) => {
-    try {
-        const { name, email, password } = req.body;
-        const result = await AuthService.register(name, email, password);
-        res.status(201).json(result);
-    } catch (err) {
-        res.status(400).json({ error: err.message });
-    }
-};
 
-export const loginUser = async (req, res) => {
+const registerUser = async (req, res) => {
     try {
-        console.log('🔍 BACKEND - Body recibido:', req.body);
-        console.log('🔍 BACKEND - Tipo de email:', typeof req.body.email);
-        console.log('🔍 BACKEND - Email value:', req.body.email);
+        console.log('🔍 BACKEND - Body completo recibido:', req.body);
+        console.log('🔍 BACKEND - Tipo de body:', typeof req.body);
+        console.log('🔍 BACKEND - Keys del body:', Object.keys(req.body));
         
-        const { email, password } = req.body;
+        const username = req.body.username || req.body.name;
+        const email = req.body.email;
+        const password = req.body.password;
         
-        // Validar que email sea string
-        if (typeof email !== 'string') {
-            console.error('❌ BACKEND - Email no es string:', email);
+        console.log('🔍 BACKEND - username/name:', username);
+        console.log('🔍 BACKEND - email:', email);
+        console.log('🔍 BACKEND - password:', password ? '***' : 'NO PRESENTE');
+
+        if (!username) {
+            console.log('❌ FALTA username/name');
             return res.status(400).json({
                 success: false,
-                error: 'Formato de email inválido'
+                message: 'El campo nombre de usuario (username/name) es requerido'
             });
         }
-    } catch (err) {
-        console.error("Error en loginUser:", err);
-        res.status(500).json({ error: "Error interno del servidor" });
-    }
-};
 
-export const getUserProfile = async (req, res) => {
-    try {
-        const user = await AuthService.getProfile(req.user._id);
-        res.json(user);
-    } catch (err) {
-        res.status(401).json({ error: err.message });
-    }
-};
+        if (!email) {
+            console.log('❌ FALTA email');
+            return res.status(400).json({
+                success: false,
+                message: 'El campo email es requerido'
+            });
+        }
 
-export const verifyEmail = async (req, res) => {
-    try {
-        console.log('INICIANDO VERIFICACIÓN DE EMAIL ==================');
+        if (!password) {
+            console.log('❌ FALTA password');
+            return res.status(400).json({
+                success: false,
+                message: 'El campo password es requerido'
+            });
+        }
+
+        const result = await AuthService.register(username, email, password);
         
-        // OBTENER EL TOKEN CORRECTAMENTE
+        return res.status(201).json({
+            success: true,
+            message: result.message,
+            user: result.user
+        });
+    } catch (error) {
+        console.error('❌ Error en registerUser:', error);
+        return res.status(error.status || 500).json({
+            success: false,
+            message: error.message || 'Error interno del servidor'
+        });
+    }
+};
+
+const loginUser = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email y password son requeridos'
+            });
+        }
+
+        const result = await AuthService.login(email, password);
+
+        return res.status(200).json({
+            success: true,
+            message: result.message,
+            token: result.token,       
+            user: result.user       
+        });
+
+    } catch (error) {
+        console.error('❌ Error en loginUser:', error);
+        
+        if (error.message === 'Email no verificado') {
+            return res.status(401).json({
+                success: false,
+                message: error.message,
+                needsVerification: true
+            });
+        }
+        
+        return res.status(error.status || 500).json({
+            success: false,
+            message: error.message || 'Error interno del servidor'
+        });
+    }
+};
+
+const verifyEmail = async (req, res) => {
+    try {
         const { token } = req.params;
-        
-        console.log('Token extraído:', token ? token.substring(0, 20) + '...' : '❌ UNDEFINED');
-        console.log('URL_API_WHATSAPP_MESSENGER:', ENVIRONMENT.URL_API_WHATSAPP_MESSENGER);
         
         if (!token) {
             return res.status(400).json({
                 success: false,
-                message: 'Token de verificación requerido'
+                message: 'Token de verificación es requerido'
             });
         }
 
-        console.log('Verificando token JWT...');
+        const result = await AuthService.verifyEmail(token);
+        
+        return res.status(200).json({
+            success: true,
+            message: result.message
+        });
+    } catch (error) {
+        console.error('❌ Error verificando email:', error);
+        return res.status(error.status || 500).json({
+            success: false,
+            message: error.message || 'Error interno del servidor'
+        });
+    }
+};
 
-        // Verificar el token JWT usando la variable de entorno
-        const decoded = jwt.verify(token, ENVIRONMENT.JWT_SECRET);
-        console.log('Token decodificado:', decoded);
+const resendVerificationEmail = async (req, res) => {
+    try {
+        const { email } = req.body;
+        
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email es requerido'
+            });
+        }
 
-        // Buscar el usuario en la base de datos
-        console.log('Buscando usuario con ID:', decoded.user_id);
-        const user = await User.findById(decoded.user_id);
+        const result = await AuthService.resendVerificationEmail(email);
+        
+        return res.status(200).json({
+            success: true,
+            message: result.message
+        });
+    } catch (error) {
+        console.error('❌ Error reenviando verificación:', error);
+        return res.status(error.status || 500).json({
+            success: false,
+            message: error.message || 'Error interno del servidor'
+        });
+    }
+};
+
+
+const getUserProfile = async (req, res) => {
+    try {
+        const user = req.user;
+        
+        return res.status(200).json({
+            success: true,
+            user: {
+                id: user._id,
+                username: user.name,
+                email: user.email,
+                verified_email: user.verified_email
+            }
+        });
+    } catch (error) {
+        console.error('❌ Error obteniendo perfil:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor'
+        });
+    }
+};
+
+
+const verifyToken = async (req, res) => {
+    try {
+        const user = req.user;
+        return res.status(200).json({
+            success: true,
+            message: 'Token válido',
+            user: {
+                id: user._id,
+                username: user.name,
+                email: user.email,
+                verified_email: user.verified_email
+            }
+        });
+    } catch (error) {
+        console.error('❌ Error verificando token:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor'
+        });
+    }
+};
+
+
+const debugUser = async (req, res) => {
+    try {
+        const { email } = req.body;
+        
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email es requerido'
+            });
+        }
+
+        const user = await UserRepository.getByEmail(email);
         
         if (!user) {
-            console.log('Usuario no encontrado con ID:', decoded.user_id);
             return res.status(404).json({
                 success: false,
                 message: 'Usuario no encontrado'
             });
         }
 
-        console.log('Usuario encontrado:', user.email);
-        console.log('Estado de verificación actual:', user.isEmailVerified);
-
-        // Verificar si el email ya está verificado
-        if (user.isEmailVerified) {
-            console.log('Email ya estaba verificado');
-            return res.status(400).json({
-                success: true,
-                message: 'El email ya está verificado'
-            });
-        }
-
-        // Marcar el email como verificado
-        console.log('🔄 Marcando email como verificado...');
-        user.isEmailVerified = true;
-        user.verifiedAt = new Date();
-        await user.save();
-
-        console.log('✅ Email verificado exitosamente para:', user.email);
-
-        // Respuesta exitosa
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
-            message: 'Email verificado exitosamente',
             user: {
                 id: user._id,
-                name: user.name,
+                username: user.name,
                 email: user.email,
-                isEmailVerified: user.isEmailVerified
+                verified_email: user.verified_email,
+                verification_token: user.verification_token ? 'Presente' : 'No presente',
+                verification_token_expires: user.verification_token_expires
             }
         });
-
     } catch (error) {
-        console.error('💥 ERROR EN VERIFICACIÓN:', error.message);
-        console.error('📋 Detalles del error:');
-        console.error('   - Nombre:', error.name);
-        console.error('   - Mensaje:', error.message);
-
-        if (error.name === 'JsonWebTokenError') {
-            return res.status(400).json({
-                success: false,
-                message: 'Token inválido o expirado'
-            });
-        }
-
-        if (error.name === 'TokenExpiredError') {
-            return res.status(400).json({
-                success: false,
-                message: 'El token ha expirado'
-            });
-        }
-
-        if (error.name === 'CastError') {
-            return res.status(400).json({
-                success: false,
-                message: 'ID de usuario inválido'
-            });
-        }
-
-        res.status(500).json({
+        console.error('❌ Error en debugUser:', error);
+        return res.status(500).json({
             success: false,
-            message: 'Error interno del servidor',
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            message: 'Error interno del servidor'
         });
     }
 };
 
-// 🔥 FUNCIÓN PARA ENVIAR EMAIL DE VERIFICACIÓN - AÑADE ESTA FUNCIÓN
-export const sendVerificationEmail = async (user, token) => {
-    try {
-        const verificationUrl = `${ENVIRONMENT.URL_API_WHATSAPP_MESSENGER}/api/auth/verify-email/${token}`;
-        
-        console.log('📧 ENVIANDO EMAIL DE VERIFICACIÓN ==================');
-        console.log('🔗 URL de verificación:', verificationUrl);
-        console.log('👤 Para usuario:', user.email);
-        console.log('📧 Desde:', ENVIRONMENT.GMAIL_USERNAME);
-        
-    } catch (error) {
-        console.error('❌ Error preparando email de verificación:', error);
-    }
-};
 
-export const verifyToken = async (req, res) => {
+const pendingInvite = await Invite.findOne({ invitedEmail:email, used:false });
+if(pendingInvite){
+    
+    await Contact.create({
+        owner: pendingInvite.owner,
+        contactUser: newUser._id
+    });
+
+    await Contact.create({
+        owner: newUser._id,
+        contactUser: pendingInvite.owner
+    });
+
+    pendingInvite.used = true;
+    await pendingInvite.save();
+}
+
+
+const resetPassword = async (req, res) => {
     try {
-        // El usuario ya está disponible por el middleware de auth
-        const user = req.user;
+        const { email, newPassword } = req.body;
         
-        console.log('✅ Token verificado para usuario:', user.email);
-        
-        // ✅ Estructura de respuesta que el frontend espera
-        res.json({
+        if (!email || !newPassword) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email y nueva contraseña son requeridos'
+            });
+        }
+
+
+        return res.status(200).json({
             success: true,
-            user: {
-                id: user._id || user.id,
-                name: user.name,
-                email: user.email,
-                isAdmin: user.isAdmin || false
-            },
-            message: 'Token válido'
+            message: 'Password reset functionality to be implemented'
         });
-        
     } catch (error) {
-        console.error('❌ Error en verifyToken:', error);
-        res.status(401).json({
+        console.error('❌ Error reseteando password:', error);
+        return res.status(500).json({
             success: false,
-            error: 'Token inválido o expirado'
+            message: 'Error interno del servidor'
         });
     }
 };
+
+export {
+    registerUser,
+    loginUser,
+    getUserProfile,
+    verifyEmail,
+    verifyToken,
+    debugUser,
+    resetPassword,
+    resendVerificationEmail
+};
+
+

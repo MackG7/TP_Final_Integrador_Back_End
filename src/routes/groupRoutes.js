@@ -1,24 +1,26 @@
+
 import express from 'express';
-import { 
-    createGroup, 
-    getGroups, 
-    getGroupById, 
-    inviteUserToGroup,
-    updateGroup,
-    deleteGroup,
-    getGroupMembers 
-} from '../controllers/groupControllers.js';
+import GroupController from '../controllers/GroupController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// ✅ TODAS las rutas protegidas con autenticación
-router.post('/', protect, createGroup);
-router.get('/', protect, getGroups);
-router.get('/:id', protect, getGroupById);
-router.post('/:id/invite', protect, inviteUserToGroup);
-router.put('/:id', protect, updateGroup);
-router.delete('/:id', protect, deleteGroup);
-router.get('/:id/members', protect, getGroupMembers);
+router.use(protect);
+
+// ✅ RUTAS ESPECÍFICAS PRIMERO
+router.get('/my', protect, GroupController.getMyGroups); 
+router.get('/debug/my-groups', protect, GroupController.debugMyGroups);
+router.get('/debug/access/:groupId', protect, GroupController.debugGroupAccess);
+
+// ✅ RUTAS DINÁMICAS DESPUÉS
+router.get('/:groupId', protect, GroupController.getGroupById); 
+
+// Otras rutas...
+router.post('/', protect, GroupController.createGroup);
+router.put('/:groupId', protect, GroupController.updateGroup);
+router.delete('/:groupId', protect, GroupController.deleteGroup);
+router.post('/:groupId/members', protect, GroupController.addMember);
+router.delete('/:groupId/members', protect, GroupController.removeMember);
+router.post('/emergency-fix', protect, GroupController.emergencyFix);
 
 export default router;

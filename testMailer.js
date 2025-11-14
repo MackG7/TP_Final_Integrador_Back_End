@@ -6,9 +6,9 @@ async function testMail() {
         const info = await transporter.sendMail({
             from: `"Test Mailer" <${ENVIRONMENT.GMAIL_USERNAME}>`,
             to: "tu_correo_de_prueba@gmail.com", // tu correo real
-            subject: "✅ Test de correo nodemailer",
+            subject: " Test de correo nodemailer",
             html: `
-        <h1>¡Hola! Esto es un test de nodemailer 📨</h1>
+        <h1>¡Hola! Esto es un test de nodemailer </h1>
         <p>Si ves este correo, tu configuración funciona correctamente.</p>
         `,
         });

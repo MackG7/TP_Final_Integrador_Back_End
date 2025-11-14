@@ -1,9 +1,16 @@
 import mongoose from "mongoose";
 
-const contactSchema = new mongoose.Schema({
-    name: { type: String, required: true },
-    avatar: String,
-    lastMessage: String,
-});
+const ContactSchema = new mongoose.Schema(
+    {
+        owner: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+        contactUser: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+        alias: { type: String, trim: true },
 
-export default mongoose.model("Contact", contactSchema);
+        // ✅ WA MODE
+        isActive: { type: Boolean, default: true }
+    },
+    { timestamps: true }
+);
+
+const Contact = mongoose.models.Contact || mongoose.model("Contact", ContactSchema);
+export default Contact;

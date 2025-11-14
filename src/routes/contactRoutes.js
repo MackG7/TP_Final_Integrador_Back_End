@@ -1,14 +1,25 @@
-// src/routes/contactRoutes.js
-import express from "express";
-const router = express.Router();
+import { Router } from "express";
+import ContactController from "../controllers/contactController.js";
+import { protect } from "../middleware/authMiddleware.js";
 
-// rutas de ejemplo
-router.get("/", (req, res) => {
-    res.send("Lista de contactos");
-});
+const router = Router();
 
-router.post("/", (req, res) => {
-    res.send("Crear contacto");
-});
+router.use(protect);
+
+// INVITE
+router.post("/invite", protect, ContactController.createInviteLink);
+
+// CREATE
+router.post("/", ContactController.addContact);
+
+// READ
+router.get("/", ContactController.getContacts);
+
+// UPDATE alias
+router.put("/:contactId", ContactController.updateAlias);
+
+// DELETE (soft delete)
+router.delete("/:contactId", ContactController.deleteContact);
+
 
 export default router;

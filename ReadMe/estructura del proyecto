@@ -1,0 +1,19 @@
+/backend
+  ├── controllers/
+  ├── models/
+  ├── routes/
+  ├── middleware/
+  ├── Repository.js
+  ├── server.js
+  ├── config.js
+  ├── package.json
+
+/frontend
+  ├── src/
+  │   ├── components/
+  │   ├── pages/
+  │   ├── context/
+  │   ├── api/
+  │   └── App.jsx
+  ├── public/
+  ├── package.json

@@ -1,0 +1,39 @@
+#  WhatsApp Clone – MERN + WebSockets
+
+Este proyecto es un clon moderno de WhatsApp Web, desarrollado con **React + Node.js + Express + MongoDB + WebSockets**, totalmente responsive y funcional.
+
+Incluye:
+- Sistema de usuarios con login/register
+- Chats privados
+- Grupos
+- Lista de contactos
+- Invitaciones por enlace
+- Burbujas estilo WhatsApp
+- Sidebar responsiva (mobile drawer)
+- Chat en tiempo real
+- UI basada en WhatsApp Web 2024
+
+---
+
+# Tecnologías Utilizadas
+
+### **Frontend**
+- React JS
+- Context API
+- Axios
+- FontAwesome
+- CSS3 (WhatsApp UI real)
+- Vite / CRA (elige según tu proyecto)
+
+### **Backend**
+- Node.js + Express
+- MongoDB + Mongoose
+- JWT Authentication
+- bcrypt
+- Socket.IO (si estás usando realtime)
+- CORS
+
+Modo de Conectar:
+
+Usuario : mackgustutn509@gmail.com
+Password: Rosemacky2290#

@@ -1,32 +1,32 @@
-import express from 'express';
-import { protect } from '../middleware/authMiddleware.js';
-import {
-    registerUser,
-    loginUser,
-    getUserProfile,
-    verifyEmail
-} from '../controllers/authControllers.js';
+import express from "express";
+import AuthService from "../services/authService.js";
+import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// 🔓 Rutas públicas
-router.post('/register', registerUser);
-router.post('/login', loginUser);
-router.get('/verify-email/:token', verifyEmail);
+// REGISTER
+router.post("/register", async (req, res) => {
+    const { username, email, password } = req.body;
+    const result = await AuthService.register(username, email, password);
+    res.json(result);
+});
 
-// 🔐 Rutas protegidas
-router.get('/profile', protect, getUserProfile);
-router.get('/verify-token', protect, (req, res) => {
-    res.json({
-        success: true,
-        user: {
-            id: req.user._id,
-            name: req.user.name,
-            email: req.user.email,
-            avatar: req.user.avatar,
-            isEmailVerified: req.user.isEmailVerified
-        }
-    });
+// LOGIN
+router.post("/login", async (req, res) => {
+    const { email, password } = req.body;
+    const result = await AuthService.login(email, password);
+    res.json(result);
+});
+
+// VERIFY EMAIL
+router.get("/verify-email/:token", async (req, res) => {
+    const result = await AuthService.verifyEmail(req.params.token);
+    res.json(result);
+});
+
+// VERIFY TOKEN (para AuthContext)
+router.get("/verify", protect, async (req, res) => {
+    return res.json({ success: true, user: req.user });
 });
 
 export default router;

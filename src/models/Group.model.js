@@ -5,11 +5,13 @@ const groupSchema = new mongoose.Schema({
         type: String,
         required: [true, 'El nombre del grupo es requerido'],
         trim: true,
-        maxlength: [50, 'El nombre no puede tener más de 50 caracteres']
+        minlength: [2, 'El nombre debe tener al menos 2 caracteres'],
+        maxlength: [50, 'El nombre no puede exceder 50 caracteres']
     },
     description: {
         type: String,
-        maxlength: [200, 'La descripción no puede tener más de 200 caracteres'],
+        trim: true,
+        maxlength: [200, 'La descripción no puede exceder 200 caracteres'],
         default: ''
     },
     url_img: {
@@ -19,11 +21,23 @@ const groupSchema = new mongoose.Schema({
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: true
+        required: [true, 'El creador del grupo es requerido']
     },
     members: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        userId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            required: true
+        },
+        role: {
+            type: String,
+            enum: ['admin', 'member'],
+            default: 'member'
+        },
+        joinedAt: {
+            type: Date,
+            default: Date.now
+        }
     }],
     isActive: {
         type: Boolean,
@@ -33,8 +47,23 @@ const groupSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Índice para búsquedas eficientes
-groupSchema.index({ createdBy: 1, createdAt: -1 });
-groupSchema.index({ members: 1 });
+// Índice para búsqueda eficiente
+groupSchema.index({ "members.userId": 1, isActive: 1 });
+groupSchema.index({ name: 'text', description: 'text' });
+
+// Método para verificar si un usuario es miembro
+groupSchema.methods.isMember = function(userId) {
+    return this.members.some(member => 
+        member.userId.toString() === userId.toString()
+    );
+};
+
+// Método para verificar si un usuario es admin
+groupSchema.methods.isAdmin = function(userId) {
+    return this.members.some(member => 
+        member.userId.toString() === userId.toString() && 
+        member.role === 'admin'
+    );
+};
 
 export default mongoose.model('Group', groupSchema);

@@ -7,7 +7,7 @@ async function connectMongoDB() {
         await mongoose.connect(ENVIRONMENT.MONGO_DB_CONNECTION_STRING, {
             timeoutMS: 30000
         })
-        console.log('Conexion con MongoDB fue exitosa')
+        console.log('✅ Conexion con MongoDB fue exitosa')
 
     }
     catch(error){

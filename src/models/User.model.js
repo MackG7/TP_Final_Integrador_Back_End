@@ -1,74 +1,50 @@
-import mongoose from "mongoose";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+import mongoose from "mongoose"
 
-const userSchema = new mongoose.Schema(
+const UserSchema = new mongoose.Schema(
     {
-        name: { type: String, required: true },
-        email: { type: String, required: true, unique: true },
-        password: { type: String, required: true },
-        avatar: { type: String, default: "" },
-        isAdmin: { type: Boolean, default: false },
-        
-        // ✅ CAMPOS CRÍTICOS PARA VERIFICACIÓN DE EMAIL - AÑADE ESTOS
-        isEmailVerified: { 
-            type: Boolean, 
-            default: false 
+        username: {
+            type: String,
+            required: [true, "El nombre de usuario es requerido"],
+            minlength: [3, "El nombre de usuario debe tener al menos 3 caracteres"],
+            maxlength: [30, "El nombre de usuario no puede superar los 30 caracteres"],
+            trim: true,
         },
-        verifiedAt: { 
-            type: Date, 
-            default: null 
+        email: {
+            type: String,
+            required: [true, "El email es requerido"],
+            unique: true,
+            lowercase: true,
+            trim: true,
+            match: [/.+@.+\..+/, "Por favor ingresa un email válido"],
+        },
+        password: {
+            type: String,
+            required: [true, "La contraseña es requerida"],
+            minlength: [6, "La contraseña debe tener al menos 6 caracteres"],
+            select: false, // No se devuelve por defecto en las consultas
+        },
+        verified_email: {
+            type: Boolean,
+            default: false,
+        },
+        isActive: {
+            type: Boolean,
+            default: true,
         },
     },
-    { timestamps: true }
-);
+    {
+        timestamps: true, // Crea createdAt y updatedAt automáticamente
+    }
+)
 
-/**
- * ✅ Hook: hashear password antes de guardar
- */
-userSchema.pre("save", async function (next) {
-    if (!this.isModified("password")) return next();
-    this.password = await bcrypt.hash(this.password, 10);
-    next();
-});
+// Opcional: eliminar el campo __v en las respuestas JSON
+UserSchema.set("toJSON", {
+    transform: (doc, ret) => {
+        delete ret.__v
+        return ret
+    },
+})
 
-/**
- * ✅ Método de instancia: comparar contraseñas
- */
-userSchema.methods.matchPassword = async function (password) {
-    return await bcrypt.compare(password, this.password);
-};
+const User = mongoose.model("User", UserSchema)
 
-/**
- * ✅ Método estático: buscar usuario por email
- */
-userSchema.statics.findByEmail = async function (email) {
-    return await this.findOne({ email });
-};
-
-/**
- * ✅ Método estático: registrar nuevo usuario
- */
-userSchema.statics.registerUser = async function (name, email, password) {
-    const userExists = await this.findByEmail(email);
-    if (userExists) throw new Error("El correo ya está en uso");
-
-    const user = await this.create({ name, email, password });
-    return user;
-};
-
-/**
- * ✅ Método estático: generar token JWT PARA VERIFICACIÓN
- */
-userSchema.statics.generateVerificationToken = function (user) {
-    return jwt.sign(
-        { 
-            email: user.email, 
-            user_id: user._id  // 👈 USA user_id EN LUGAR DE id
-        }, 
-        process.env.JWT_SECRET, 
-        { expiresIn: "24h" }
-    );
-};
-
-export default mongoose.model("User", userSchema);
+export default User
