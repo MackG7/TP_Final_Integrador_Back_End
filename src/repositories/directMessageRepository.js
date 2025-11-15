@@ -1,4 +1,4 @@
-import DirectMessage from "../models/DirectMessage.model.js";
+import DirectMessage from "../models/directMessage.model";
 
 export default class DirectMessageRepository {
 
