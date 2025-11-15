@@ -1,4 +1,4 @@
-import Contact from "../models/Contact.model.js";
+import Contact from "../models/contact.model.js";
 import User from "../models/User.model.js";
 
 export default class ContactRepository {
