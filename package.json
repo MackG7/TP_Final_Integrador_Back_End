@@ -1,7 +1,7 @@
 {
   "name": "tp_final_back_end_2025",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "src/server.js",
   "scripts": {
     "start": " node ./src/server.js",
     "dev": "node --watch ./src/server.js",
