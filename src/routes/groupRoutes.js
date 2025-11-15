@@ -1,4 +1,3 @@
-
 import express from 'express';
 import GroupController from '../controllers/groupController.js';
 import { protect } from '../middleware/authMiddleware.js';

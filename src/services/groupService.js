@@ -1,7 +1,6 @@
 import GroupRepository from "../repositories/groupRepository.js";
 
 export default class GroupService {
-    // 🟢 CREAR GRUPO (YA ESTÁ BIEN)
     static async createGroup(data, creatorId) {
         try {
             console.log("🎯 GroupService - INICIANDO CREACIÓN DE GRUPO");
