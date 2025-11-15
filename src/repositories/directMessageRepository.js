@@ -1,12 +1,12 @@
-import DirectMessage from "../models/directMessage.model";
+import DirectMessage from "../models/directMessage.model.js";
 
 export default class DirectMessageRepository {
 
-    static async sendMessage(senderId, receiverId, content) { // ✅ Cambiado 'message' por 'content'
+    static async sendMessage(senderId, receiverId, content) { 
         const msg = await DirectMessage.create({
             sender: senderId,
             receiver: receiverId,
-            content // ✅ Ahora usa 'content' que viene como parámetro
+            content 
         });
         return msg;
     }
