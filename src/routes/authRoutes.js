@@ -21,8 +21,33 @@ router.post("/login", async (req, res) => {
 // VERIFY EMAIL
 router.get("/verify-email/:token", async (req, res) => {
     const result = await AuthService.verifyEmail(req.params.token);
-    res.json(result);
+
+    if (!result.success) {
+        return res.send(`
+            <html>
+                <body style="font-family: Arial; text-align:center;">
+                    <h1 style="color: red;">❌ Error</h1>
+                    <p>${result.message}</p>
+                </body>
+            </html>
+        `);
+    }
+
+    return res.send(`
+        <html>
+            <body style="font-family: Arial; text-align:center;">
+                <h1 style="color: #25D366;">✔ Email verificado</h1>
+                <p>Tu correo fue verificado exitosamente.</p>
+                <a href="${process.env.URL_FRONTEND}/login"
+                    style="padding: 10px 20px; background:#25D366; color:white;
+                    text-decoration:none; border-radius:6px;">
+                    Ir al Login
+                </a>
+            </body>
+        </html>
+    `);
 });
+
 
 // VERIFY TOKEN (para AuthContext)
 router.get("/verify", protect, async (req, res) => {
@@ -30,3 +55,5 @@ router.get("/verify", protect, async (req, res) => {
 });
 
 export default router;
+
+

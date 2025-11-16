@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.model.js";
-import transporter from "../config/mailer.config.js";
+import { resend } from "../config/mailer.config.js";
 import ENVIRONMENT from "../config/environment.config.js";
 
 class AuthService {
@@ -30,12 +30,14 @@ class AuthService {
                 verified_email: false,
             });
 
+            // TOKEN PARA VERIFICAR CORREO
             const verificationToken = jwt.sign(
                 { email: newUser.email, user_id: newUser._id.toString() },
                 ENVIRONMENT.JWT_SECRET,
-                { expiresIn: '24h' }
+                { expiresIn: "24h" }
             );
 
+            // TOKEN DE AUTENTICACIÓN
             const authToken = jwt.sign(
                 {
                     user_id: newUser._id.toString(),
@@ -46,29 +48,29 @@ class AuthService {
                 { expiresIn: "21d" }
             );
 
-            if (transporter && ENVIRONMENT.GMAIL_USERNAME) {
-                const emailHTML = `
-                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                            <h2 style="color: #25D366;">¡Bienvenido ${newUser.username}! 👋</h2>
-                            <p>Gracias por registrarte. Verifica tu email:</p>
+            // HTML DEL CORREO
+            const emailHTML = `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #25D366;">¡Bienvenido ${newUser.username}! 👋</h2>
+                    <p>Gracias por registrarte. Verifica tu email:</p>
 
-                            <div style="text-align: center; margin: 30px 0;">
-                                <a href="${ENVIRONMENT.URL_API_BACKEND}/api/auth/verify-email/${verificationToken}" 
-                                style="background-color: #25D366; color: white; padding: 12px 24px; 
-                                text-decoration: none; border-radius: 8px; font-weight: bold;">
-                                Verificar Mi Email
-                                </a>
-                            </div>
-                        </div>
-                    `;
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="${ENVIRONMENT.URL_API_WHATSAPP_MESSENGER}/api/auth/verify-email/${verificationToken}" 
+                        style="background-color: #25D366; color: white; padding: 12px 24px; 
+                        text-decoration: none; border-radius: 8px; font-weight: bold;">
+                        Verificar Mi Email
+                        </a>
+                    </div>
+                </div>
+            `;
 
-                await transporter.sendMail({
-                    from: ENVIRONMENT.GMAIL_USERNAME,
-                    to: newUser.email,
-                    subject: "Verificación de correo electrónico",
-                    html: emailHTML
-                });
-            }
+            // ENVÍO CON RESEND
+            await resend.emails.send({
+                from: "WhatsApp Messenger <onboarding@resend.dev>",
+                to: newUser.email,
+                subject: "Verificación de correo electrónico",
+                html: emailHTML,
+            });
 
             return {
                 success: true,
@@ -89,67 +91,58 @@ class AuthService {
     }
 
     static async login(email, password) {
-    try {
+        try {
 
-        // DEBUG LOGS obligatorios
-        console.log("🟦 LOGIN SERVICE email recibido:", email);
-        console.log("🟦 LOGIN SERVICE password recibido:", password);
+            const user = await User.findOne({ email: email.toLowerCase().trim() }).select("+password");
 
-        const user = await User.findOne({ email: email.toLowerCase().trim() }).select("+password");
+            if (!email || !password) {
+                return { success: false, message: "Email y contraseña son requeridos" };
+            }
 
-        console.log("🟦 USER ENCONTRADO:", user);
+            if (!user) return { success: false, message: "El email o la contraseña son incorrectos" };
 
-        if (user) {
-            console.log("🟦 PASSWORD HASH EN DB:", user.password);
+            const isPasswordValid = await bcrypt.compare(password, user.password);
+
+            if (!isPasswordValid) return { success: false, message: "El email o la contraseña son incorrectos" };
+
+            if (!user.verified_email) {
+                return { success: false, message: "Por favor verifica tu email antes de iniciar sesión." };
+            }
+
+            const token = jwt.sign(
+                {
+                    user_id: user._id.toString(),
+                    username: user.username,
+                    email: user.email
+                },
+                ENVIRONMENT.JWT_SECRET,
+                { expiresIn: "21d" }
+            );
+
+            return {
+                success: true,
+                message: "Login exitoso",
+                token,
+                user: {
+                    id: user._id,
+                    username: user.username,
+                    email: user.email,
+                    verified_email: user.verified_email,
+                },
+            };
+
+        } catch (error) {
+            console.error("Error en login:", error);
+            return { success: false, message: "Error al iniciar sesión" };
         }
-
-        if (!email || !password) {
-            return { success: false, message: "Email y contraseña son requeridos" };
-        }
-
-        if (!user) return { success: false, message: "El email o la contraseña son incorrectos" };
-
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-
-        console.log("🟦 RESULTADO COMPARE BCRYPT:", isPasswordValid);
-
-        if (!isPasswordValid) return { success: false, message: "El email o la contraseña son incorrectos" };
-
-        if (!user.verified_email) return { success: false, message: "Por favor verifica tu email antes de iniciar sesión." };
-
-        const token = jwt.sign(
-            {
-                user_id: user._id.toString(),
-                username: user.username,
-                email: user.email
-            },
-            ENVIRONMENT.JWT_SECRET,
-            { expiresIn: "21d" }
-        );
-
-        return {
-            success: true,
-            message: "Login exitoso",
-            token,
-            user: {
-                id: user._id,
-                username: user.username,
-                email: user.email,
-                verified_email: user.verified_email,
-            },
-        };
-
-    } catch (error) {
-        console.error("Error en login:", error);
-        return { success: false, message: "Error al iniciar sesión" };
     }
-}
 
     static async verifyEmail(token) {
         try {
             if (!token) throw new Error("Token requerido");
 
             const payload = jwt.verify(token, ENVIRONMENT.JWT_SECRET);
+
             const user = await User.findById(payload.user_id);
             if (!user) throw new Error("Usuario no encontrado");
 
@@ -169,4 +162,3 @@ class AuthService {
 }
 
 export default AuthService;
-

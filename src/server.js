@@ -4,18 +4,18 @@ import dotenv from "dotenv";
 import http from "http";
 import { Server } from "socket.io";
 
-import connectMongoDB from "./config/mongoDB.config.js";
+import connectMongoDB from "../src/config/mongoDB.config.js";
 
 // Rutas
-import userRoutes from "./routes/userRoutes.js";
-import contactRoutes from "./routes/contactRoutes.js";
-import groupMessageRoutes from "./routes/groupMessageRoutes.js";
-import chatRoutes from "./routes/chatRoutes.js";
-import groupRoutes from "./routes/groupRoutes.js";
-import authRoutes from "./routes/authRoutes.js";
-import memberRoutes from "./routes/memberRoutes.js";
-import DirectMessageRoutes from "./routes/DirectMessageRoutes.js";
-import inviteRoutes from "./routes/inviteRoutes.js";
+import userRoutes from "../src/routes/userRoutes.js";
+import contactRoutes from "../src/routes/contactRoutes.js";
+import groupMessageRoutes from "../src/routes/groupMessageRoutes.js";
+import chatRoutes from "../src/routes/chatRoutes.js";
+import groupRoutes from "../src/routes/groupRoutes.js";
+import authRoutes from "../src/routes/authRoutes.js";
+import memberRoutes from "../src/routes/memberRoutes.js";
+import DirectMessageRoutes from "../src/routes/DirectMessageRoutes.js";
+import inviteRoutes from "../src/routes/inviteRoutes.js";
 
 dotenv.config();
 
