@@ -138,8 +138,8 @@ class AuthService {
             };
 
         } catch (error) {
-            console.error("Error en login:", error);
-            return { success: false, message: "Error al iniciar sesión" };
+            console.error("💥 ERROR REAL EN LOGIN:", error);
+            return { success: false, message: error.message };
         }
     }
 
