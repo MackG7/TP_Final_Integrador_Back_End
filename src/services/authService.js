@@ -48,7 +48,7 @@ class AuthService {
                 { expiresIn: "21d" }
             );
 
-            // HTML DEL CORREO
+            // HTML del correo
             const emailHTML = `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #25D366;">¡Bienvenido ${newUser.username}! 👋</h2>
@@ -92,23 +92,29 @@ class AuthService {
 
     static async login(email, password) {
         try {
-
-            const user = await User.findOne({ email: email.toLowerCase().trim() }).select("+password");
-
             if (!email || !password) {
                 return { success: false, message: "Email y contraseña son requeridos" };
             }
 
-            if (!user) return { success: false, message: "El email o la contraseña son incorrectos" };
+            const user = await User.findOne({ email: email.toLowerCase().trim() }).select("+password");
 
-            const isPasswordValid = await bcrypt.compare(password, user.password);
-
-            if (!isPasswordValid) return { success: false, message: "El email o la contraseña son incorrectos" };
-
-            if (!user.verified_email) {
-                return { success: false, message: "Por favor verifica tu email antes de iniciar sesión." };
+            // Email NO existe
+            if (!user) {
+                return { success: false, message: "email_not_found" };
             }
 
+            // Contraseña incorrecta
+            const isPasswordValid = await bcrypt.compare(password, user.password);
+            if (!isPasswordValid) {
+                return { success: false, message: "wrong_password" };
+            }
+
+            // Email no verificado
+            if (!user.verified_email) {
+                return { success: false, message: "email_not_verified" };
+            }
+
+            // Login OK
             const token = jwt.sign(
                 {
                     user_id: user._id.toString(),
