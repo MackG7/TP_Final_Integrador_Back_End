@@ -8,6 +8,8 @@ class AuthService {
 
     static async register(username, email, password) {
         try {
+
+            // Validación básica
             if (!username || !email || !password) {
                 throw new Error("Username, email y contraseña son requeridos");
             }
@@ -16,13 +18,16 @@ class AuthService {
                 throw new Error("La contraseña debe tener al menos 6 caracteres");
             }
 
+            // Verificar email duplicado
             const userExists = await User.findOne({ email });
             if (userExists) {
                 return { success: false, message: "El email ya está en uso" };
             }
 
+            // Hashear contraseña
             const hashedPassword = await bcrypt.hash(password, 10);
 
+            // Crear usuario
             const newUser = await User.create({
                 username: username.trim(),
                 email: email.toLowerCase().trim(),
@@ -30,14 +35,17 @@ class AuthService {
                 verified_email: false,
             });
 
-            // TOKEN PARA VERIFICAR CORREO
+            // Token para verificar email
             const verificationToken = jwt.sign(
-                { email: newUser.email, user_id: newUser._id.toString() },
+                {
+                    email: newUser.email,
+                    user_id: newUser._id.toString()
+                },
                 ENVIRONMENT.JWT_SECRET,
                 { expiresIn: "24h" }
             );
 
-            // TOKEN DE AUTENTICACIÓN
+            // Token de login
             const authToken = jwt.sign(
                 {
                     user_id: newUser._id.toString(),
@@ -48,25 +56,31 @@ class AuthService {
                 { expiresIn: "21d" }
             );
 
+            // Construcción del link
+            const verificationURL = `${ENVIRONMENT.URL_API_WHATSAPP_MESSENGER}/api/auth/verify-email/${verificationToken}`;
+
             // HTML del correo
             const emailHTML = `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #25D366;">¡Bienvenido ${newUser.username}! 👋</h2>
-                    <p>Gracias por registrarte. Verifica tu email:</p>
+                    <p>Gracias por registrarte en WhatsApp Messenger.</p>
+                    <p>Haz clic en el botón para verificar tu dirección de email:</p>
 
                     <div style="text-align: center; margin: 30px 0;">
-                        <a href="${ENVIRONMENT.URL_API_WHATSAPP_MESSENGER}/api/auth/verify-email/${verificationToken}" 
+                        <a href="${verificationURL}" 
                         style="background-color: #25D366; color: white; padding: 12px 24px; 
                         text-decoration: none; border-radius: 8px; font-weight: bold;">
                         Verificar Mi Email
                         </a>
                     </div>
+
+                    <p>Si no solicitaste esta cuenta, simplemente ignora este mensaje.</p>
                 </div>
             `;
 
-            // ENVÍO CON RESEND
+            // ENVÍO REAL CON RESEND 
             await resend.emails.send({
-                from: "WhatsApp Messenger <onboarding@resend.dev>",
+                from: process.env.EMAIL_FROM,
                 to: newUser.email,
                 subject: "Verificación de correo electrónico",
                 html: emailHTML,
@@ -74,7 +88,7 @@ class AuthService {
 
             return {
                 success: true,
-                message: "Usuario registrado. Revisa tu correo para verificar tu cuenta.",
+                message: "Usuario registrado correctamente. Verifica tu email.",
                 token: authToken,
                 user: {
                     id: newUser._id,
@@ -85,7 +99,7 @@ class AuthService {
             };
 
         } catch (error) {
-            console.error("Error en register:", error);
+            console.error("❌ Error en register:", error);
             return { success: false, message: error.message };
         }
     }
@@ -96,25 +110,22 @@ class AuthService {
                 return { success: false, message: "Email y contraseña son requeridos" };
             }
 
-            const user = await User.findOne({ email: email.toLowerCase().trim() }).select("+password");
+            const user = await User.findOne({ email: email.toLowerCase().trim() })
+                .select("+password");
 
-            // Email NO existe
             if (!user) {
                 return { success: false, message: "email_not_found" };
             }
 
-            // Contraseña incorrecta
-            const isPasswordValid = await bcrypt.compare(password, user.password);
-            if (!isPasswordValid) {
+            const valid = await bcrypt.compare(password, user.password);
+            if (!valid) {
                 return { success: false, message: "wrong_password" };
             }
 
-            // Email no verificado
             if (!user.verified_email) {
                 return { success: false, message: "email_not_verified" };
             }
 
-            // Login OK
             const token = jwt.sign(
                 {
                     user_id: user._id.toString(),
@@ -134,15 +145,16 @@ class AuthService {
                     username: user.username,
                     email: user.email,
                     verified_email: user.verified_email,
-                },
+                }
             };
 
         } catch (error) {
-            console.error("💥 ERROR REAL EN LOGIN:", error);
+            console.error("🔥 ERROR EN LOGIN:", error);
             return { success: false, message: error.message };
         }
     }
 
+    
     static async verifyEmail(token) {
         try {
             if (!token) throw new Error("Token requerido");
@@ -162,6 +174,7 @@ class AuthService {
             return { success: true, message: "Email verificado correctamente" };
 
         } catch (error) {
+            console.error("❌ Error en verifyEmail:", error);
             return { success: false, message: error.message };
         }
     }
