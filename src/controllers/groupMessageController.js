@@ -1,4 +1,4 @@
-import GroupMessage from "../models/GroupMessage.model.js";
+import GroupMessage from "../models/groupMessage.model.js";
 import Group from "../models/Group.model.js";
 
 export default class GroupMessageController {
