@@ -5,64 +5,62 @@ import Group from "../models/Group.model.js";
 class GroupController {
 
     /* ============================================================
-    CREATE - Crear grupo
+    CREATE - Crear grupo (CORREGIDO)
     ============================================================ */
     static async createGroup(req, res) {
         try {
-            console.log('🎯 GroupController - CREANDO NUEVO GRUPO');
-            console.log('📦 Body recibido:', req.body);
-            console.log('👤 Usuario creador:', req.user._id);
+            const userId = req.user._id;
+            const { name, description, url_img, members } = req.body;
 
-            const { name, description, url_img } = req.body;
-            const createdBy = req.user._id;
-
-            if (!name || !name.trim()) {
+            if (!name) {
                 return res.status(400).json({
                     success: false,
-                    message: "El nombre del grupo es requerido"
+                    message: "El nombre del grupo es obligatorio"
                 });
             }
 
-            if (name.trim().length < 2) {
-                return res.status(400).json({
-                    success: false,
-                    message: "El nombre del grupo debe tener al menos 2 caracteres"
-                });
-            }
+            // ✅ CORRECCIÓN: Usar createdBy en lugar de admin
+            // ✅ CORRECCIÓN: Estructura correcta para members
+            const newGroup = await Group.create({
+                name,
+                description: description || "",
+                url_img: url_img || "",
+                createdBy: userId,  // ✅ Campo correcto
+                members: [
+                    // El creador como admin
+                    {
+                        userId: userId,
+                        role: "admin",
+                        joinedAt: new Date()
+                    },
+                    // Los demás miembros
+                    ...(members || []).map(memberId => ({
+                        userId: memberId,
+                        role: "member", 
+                        joinedAt: new Date()
+                    }))
+                ]
+            });
 
-            console.log('🔄 GroupController - Llamando a GroupService...');
-
-            const result = await GroupService.createGroup(
-                { name, description, url_img },
-                createdBy
-            );
-
-            if (!result.success) {
-                return res.status(400).json({
-                    success: false,
-                    message: result.error
-                });
-            }
-
-            console.log('✅ Grupo creado exitosamente:', result.group._id);
+            const populated = await Group.findById(newGroup._id)
+                .populate("createdBy", "username email avatar")
+                .populate("members.userId", "username email avatar");
 
             return res.status(201).json({
                 success: true,
-                message: "Grupo creado correctamente",
-                group: result.group,
-                data: result.group
+                message: "Grupo creado exitosamente",
+                data: populated
             });
 
         } catch (error) {
-            console.error("❌ Error en createGroup:", error);
+            console.error("❌ Error al crear grupo:", error);
             return res.status(500).json({
                 success: false,
-                message: "Error interno del servidor al crear grupo"
+                message: "Error al crear grupo",
+                error: error.message
             });
         }
     }
-
-
 
     /* ============================================================
     READ - Obtener mis grupos
@@ -102,8 +100,6 @@ class GroupController {
         }
     }
 
-
-
     /* ============================================================
     DEBUG - Diagnóstico de grupos
     ============================================================ */
@@ -142,8 +138,6 @@ class GroupController {
             });
         }
     }
-
-
 
     /* ============================================================
     DEBUG - Verificar acceso a un grupo específico
@@ -190,8 +184,6 @@ class GroupController {
         }
     }
 
-
-
     /* ============================================================
     READ - Obtener grupo por ID
     ============================================================ */
@@ -222,8 +214,6 @@ class GroupController {
             });
         }
     }
-
-
 
     /* ============================================================
     UPDATE - Actualizar grupo
@@ -258,11 +248,9 @@ class GroupController {
         }
     }
 
-
-
     /* ============================================================
-DELETE - Eliminar grupo (CORREGIDO)
-============================================================ */
+    DELETE - Eliminar grupo
+    ============================================================ */
     static async deleteGroup(req, res) {
         try {
             const { groupId } = req.params;
@@ -270,7 +258,6 @@ DELETE - Eliminar grupo (CORREGIDO)
 
             console.log(`🗑️ Eliminando grupo: ${groupId} por usuario: ${userId}`);
 
-            // ✅ CORRECCIÓN: Usar getGroupById en lugar de findById
             const group = await GroupRepository.getGroupById(groupId);
             if (!group) {
                 return res.status(404).json({
@@ -287,7 +274,6 @@ DELETE - Eliminar grupo (CORREGIDO)
                 });
             }
 
-            // ✅ CORRECCIÓN: Usar deleteGroup del Repository
             const deleted = await GroupRepository.deleteGroup(groupId);
 
             if (!deleted) {
@@ -312,8 +298,6 @@ DELETE - Eliminar grupo (CORREGIDO)
             });
         }
     }
-
-
 
     /* ============================================================
     ADD MEMBER - Agregar usuario al grupo
@@ -348,8 +332,6 @@ DELETE - Eliminar grupo (CORREGIDO)
         }
     }
 
-
-
     /* ============================================================
     REMOVE MEMBER - Sacar usuario del grupo
     ============================================================ */
@@ -382,8 +364,6 @@ DELETE - Eliminar grupo (CORREGIDO)
             });
         }
     }
-
-
 
     /* ============================================================
     EMERGENCY FIX - Reparar membresías malas

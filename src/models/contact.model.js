@@ -6,7 +6,6 @@ const ContactSchema = new mongoose.Schema(
         contactUser: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
         alias: { type: String, trim: true },
 
-        // ✅ WA MODE
         isActive: { type: Boolean, default: true }
     },
     { timestamps: true }

@@ -2,7 +2,6 @@ import Group from "../models/Group.model.js";
 
 export default class GroupRepository {
 
-    // ✅ Crear grupo - CORREGIDO (sin populate pesado)
     static async createGroup(data) {
         try {
             console.log ('GroupRepository - Iniciando creación de grupo con datos:', {

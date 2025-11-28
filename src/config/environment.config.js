@@ -22,10 +22,8 @@ const ENVIRONMENT = {
     URL_FRONTEND: process.env.URL_FRONTEND || "http://localhost:5173",
     URL_API_WHATSAPP_MESSENGER:
         process.env.URL_API_WHATSAPP_MESSENGER || "http://localhost:5000",
-
-    // Email
-    EMAIL_FROM: required("EMAIL_FROM"),       
-    RESEND_API_KEY: required("RESEND_API_KEY") 
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    EMAIL_FROM : process.env.EMAIL_FROM
 };
 
 export default ENVIRONMENT;

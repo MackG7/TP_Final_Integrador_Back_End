@@ -1,15 +1,16 @@
 import GroupRepository from "../repositories/groupRepository.js";
 
 export default class GroupService {
+
+    /* ============================================================
+       CREATE - Crear grupo
+    ============================================================ */
     static async createGroup(data, creatorId) {
         try {
-            console.log("🎯 GroupService - INICIANDO CREACIÓN DE GRUPO");
-            console.log("👤 Creador:", creatorId);
-            console.log("📝 Datos recibidos:", data);
-
-            // Validaciones básicas
             if (!creatorId) throw new Error("ID de creador no proporcionado");
-            if (!data.name || !data.name.trim()) throw new Error("El nombre del grupo es requerido");
+            if (!data.name || !data.name.trim())
+                throw new Error("El nombre del grupo es requerido");
+
             if (data.name.trim().length < 2)
                 throw new Error("El nombre debe tener al menos 2 caracteres");
 
@@ -18,249 +19,239 @@ export default class GroupService {
                 description: (data.description || "").trim(),
                 url_img: data.url_img || "",
                 createdBy: creatorId,
-                members: [{
-                    userId: creatorId,
-                    role: "admin",
-                }],
+                admin: creatorId,   // 🟩 FIX OBLIGATORIO
+                members: [
+                    {
+                        userId: creatorId,
+                        role: "admin",
+                        joinedAt: new Date(),
+                    }
+                ],
                 isActive: true,
             };
 
-            console.log("📦 Datos preparados para crear grupo:", groupData);
-
             const group = await GroupRepository.createGroup(groupData);
-            if (!group) throw new Error("El grupo se creó pero retornó null");
-
-            console.log("✅ Grupo creado exitosamente:", group._id);
+            if (!group) throw new Error("Error creando el grupo (retornó null)");
 
             return {
                 success: true,
                 message: "Grupo creado exitosamente",
-                group: group,
+                group,
             };
+
         } catch (error) {
-            console.error("❌ GroupService - ERROR en createGroup:", error);
-            
+            console.error("❌ GroupService.createGroup:", error);
+
             if (error.name === "ValidationError") {
-                const errors = Object.values(error.errors).map((err) => err.message);
+                const messages = Object.values(error.errors).map(e => e.message);
                 return {
                     success: false,
-                    error: `Error de validación: ${errors.join(", ")}`,
+                    error: `Error de validación: ${messages.join(", ")}`,
                 };
-            } else if (error.code === 11000) {
+            }
+
+            if (error.code === 11000) {
                 return {
                     success: false,
                     error: "Ya existe un grupo con ese nombre",
                 };
-            } else {
-                return {
-                    success: false,
-                    error: `Error al crear grupo: ${error.message}`,
-                };
             }
+
+            return {
+                success: false,
+                error: error.message,
+            };
         }
     }
 
-    // 🟢 OBTENER GRUPO POR ID - CORREGIDO
+
+    /* ============================================================
+       READ - Obtener grupo por ID con verificación de acceso
+    ============================================================ */
     static async getGroupById(id, userId = null) {
         try {
-            console.log('🔍 GroupService - Verificando acceso al grupo:', { id, userId });
-            
             const group = await GroupRepository.getGroupById(id);
-            if (!group) {
-                return { success: false, error: "Grupo no encontrado" };
-            }
+            if (!group) return { success: false, error: "Grupo no encontrado" };
 
-            console.log('📋 Grupo encontrado:', group.name);
-            console.log('👥 Miembros del grupo:', group.members.map(m => ({
-                userId: m.userId?._id ? m.userId._id.toString() : m.userId.toString(),
-                username: m.userId?.username || 'No username'
-            })));
-
-            // ✅ VERIFICACIÓN MEJORADA - Maneja populate y ObjectId
+            // Si se envía userId → se verifica membresía
             if (userId) {
                 const isMember = group.members.some(member => {
-                    // Manejar tanto ObjectId populado como string
-                    const memberUserId = member.userId?._id 
-                        ? member.userId._id.toString() 
+                    const memberId = member.userId?._id
+                        ? member.userId._id.toString()
                         : member.userId.toString();
-                    
-                    const currentUserId = userId.toString();
-                    
-                    console.log('🔍 Comparando:', {
-                        memberUserId,
-                        currentUserId,
-                        isMatch: memberUserId === currentUserId
-                    });
-                    
-                    return memberUserId === currentUserId;
+
+                    return memberId === userId.toString();
                 });
 
-                console.log('✅ Resultado verificación membresía:', { isMember });
-
                 if (!isMember) {
-                    console.log('❌ Usuario NO es miembro del grupo');
                     return {
                         success: false,
-                        error: "No tienes acceso a este grupo"
+                        error: "No tienes acceso a este grupo",
                     };
                 }
-                
-                console.log('✅ Usuario SÍ es miembro del grupo');
             }
 
             return { success: true, data: group };
+
         } catch (error) {
-            console.error("GroupService - Error en getGroupById:", error);
+            console.error("❌ GroupService.getGroupById:", error);
             return { success: false, error: error.message };
         }
     }
 
-    // 🟡 OBTENER TODOS LOS GRUPOS
+
+    /* ============================================================
+       READ - Obtener todos los grupos de un usuario
+    ============================================================ */
     static async getAllGroups(userId = null) {
         try {
-            let groups;
-            if (userId) {
-                groups = await GroupRepository.getGroupsByUser(userId);
-            } else {
-                groups = await GroupRepository.getAllGroups();
-            }
+            const groups = userId
+                ? await GroupRepository.getGroupsByUser(userId)
+                : await GroupRepository.getAllGroups();
+
             return { success: true, data: groups };
+
         } catch (error) {
-            console.error("GroupService - Error en getAllGroups:", error);
+            console.error("❌ GroupService.getAllGroups:", error);
             return { success: false, error: error.message };
         }
     }
 
-    // 🟠 ACTUALIZAR GRUPO
+
+    /* ============================================================
+       UPDATE
+    ============================================================ */
     static async updateGroup(id, data, userId) {
         try {
             const group = await GroupRepository.getGroupById(id);
+            if (!group) return { success: false, error: "Grupo no encontrado" };
+
             const isAdmin = group.members.some(
-                (member) =>
-                    member.userId.toString() === userId.toString() &&
-                    member.role === "admin"
+                m => m.userId.toString() === userId.toString() && m.role === "admin"
             );
 
-            if (!isAdmin) {
-                return {
-                    success: false,
-                    error: "Solo los administradores pueden actualizar el grupo",
-                };
-            }
+            if (!isAdmin)
+                return { success: false, error: "Solo administradores pueden actualizar el grupo" };
 
-            const updatedGroup = await GroupRepository.updateGroup(id, data);
-            return { success: true, data: updatedGroup };
+            const updated = await GroupRepository.updateGroup(id, data);
+
+            return { success: true, data: updated };
+
         } catch (error) {
-            console.error("GroupService - Error en updateGroup:", error);
+            console.error("❌ GroupService.updateGroup:", error);
             return { success: false, error: error.message };
         }
     }
 
-    // 🔴 ELIMINAR GRUPO
+
+    /* ============================================================
+       DELETE
+    ============================================================ */
     static async deleteGroup(id, userId) {
         try {
             const group = await GroupRepository.getGroupById(id);
+            if (!group) return { success: false, error: "Grupo no encontrado" };
+
             const isAdmin = group.members.some(
-                (member) =>
-                    member.userId.toString() === userId.toString() &&
-                    member.role === "admin"
+                m => m.userId.toString() === userId.toString() && m.role === "admin"
             );
 
-            if (!isAdmin) {
-                return {
-                    success: false,
-                    error: "Solo los administradores pueden eliminar el grupo",
-                };
-            }
+            if (!isAdmin)
+                return { success: false, error: "Solo administradores pueden eliminar el grupo" };
 
             await GroupRepository.deleteGroup(id);
+
             return { success: true, message: "Grupo eliminado exitosamente" };
+
         } catch (error) {
-            console.error("GroupService - Error en deleteGroup:", error);
+            console.error("❌ GroupService.deleteGroup:", error);
             return { success: false, error: error.message };
         }
     }
 
-    // 🟢 AGREGAR MIEMBRO
+
+    /* ============================================================
+       ADD MEMBER
+    ============================================================ */
     static async addMember(groupId, memberId, userId) {
         try {
             const group = await GroupRepository.getGroupById(groupId);
+            if (!group) return { success: false, error: "Grupo no encontrado" };
+
             const isAdmin = group.members.some(
-                (member) =>
-                    member.userId.toString() === userId.toString() &&
-                    member.role === "admin"
+                m => m.userId.toString() === userId.toString() && m.role === "admin"
             );
 
-            if (!isAdmin) {
-                return {
-                    success: false,
-                    error: "Solo los administradores pueden agregar miembros",
-                };
-            }
+            if (!isAdmin)
+                return { success: false, error: "Solo administradores pueden agregar miembros" };
 
-            const updatedGroup = await GroupRepository.addMemberToGroup(
-                groupId,
-                memberId
-            );
-            return { success: true, data: updatedGroup };
+            const updated = await GroupRepository.addMemberToGroup(groupId, memberId);
+
+            return { success: true, data: updated };
+
         } catch (error) {
-            console.error("GroupService - Error en addMember:", error);
+            console.error("❌ GroupService.addMember:", error);
             return { success: false, error: error.message };
         }
     }
 
-    // 🟠 REMOVER MIEMBRO
+
+    /* ============================================================
+       REMOVE MEMBER
+    ============================================================ */
     static async removeMember(groupId, memberId, userId) {
         try {
             const group = await GroupRepository.getGroupById(groupId);
-            const userRole = group.members.find(
-                (member) => member.userId.toString() === userId.toString()
-            )?.role;
+            if (!group) return { success: false, error: "Grupo no encontrado" };
 
-            const isSelfRemoval = userId.toString() === memberId.toString();
-            const isAdmin = userRole === "admin";
+            const requester = group.members.find(
+                m => m.userId.toString() === userId.toString()
+            );
 
-            if (!isAdmin && !isSelfRemoval) {
-                return {
-                    success: false,
-                    error: "No tienes permisos para eliminar este miembro",
-                };
-            }
+            if (!requester)
+                return { success: false, error: "No perteneces al grupo" };
 
-            if (isSelfRemoval && isAdmin) {
-                const adminCount = group.members.filter(
-                    (member) => member.role === "admin"
-                ).length;
+            const isSelf = userId.toString() === memberId.toString();
+            const isAdmin = requester.role === "admin";
+
+            if (!isAdmin && !isSelf)
+                return { success: false, error: "No tienes permisos para remover a este usuario" };
+
+            // Evitar que último admin abandone
+            if (isSelf && isAdmin) {
+                const adminCount = group.members.filter(m => m.role === "admin").length;
+
                 if (adminCount <= 1) {
                     return {
                         success: false,
-                        error: "No puedes salir del grupo siendo el único administrador",
+                        error: "No puedes salir del grupo siendo el único administrador"
                     };
                 }
             }
 
-            const updatedGroup = await GroupRepository.removeMemberFromGroup(
-                groupId,
-                memberId
-            );
-            return { success: true, data: updatedGroup };
+            const updated = await GroupRepository.removeMemberFromGroup(groupId, memberId);
+
+            return { success: true, data: updated };
+
         } catch (error) {
-            console.error("GroupService - Error en removeMember:", error);
+            console.error("❌ GroupService.removeMember:", error);
             return { success: false, error: error.message };
         }
     }
 
-    // 🟢 MÉTODO TEMPORAL - Desactivar verificación
+
+    /* ============================================================
+       UNSAFE - sin verificación (solo debug)
+    ============================================================ */
     static async getGroupByIdUnsafe(id) {
         try {
-            console.log('⚠️  MODO INSECURO - Obteniendo grupo sin verificación');
             const group = await GroupRepository.getGroupById(id);
-            if (!group) {
-                return { success: false, error: "Grupo no encontrado" };
-            }
+            if (!group) return { success: false, error: "Grupo no encontrado" };
+
             return { success: true, data: group };
+
         } catch (error) {
-            console.error("GroupService - Error en getGroupByIdUnsafe:", error);
+            console.error("❌ GroupService.getGroupByIdUnsafe:", error);
             return { success: false, error: error.message };
         }
     }

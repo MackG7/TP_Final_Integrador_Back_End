@@ -6,11 +6,9 @@ import { Server } from "socket.io";
 
 import connectMongoDB from "./config/mongoDB.config.js";
 
-// Rutas
 import userRoutes from "./routes/userRoutes.js";
 import contactRoutes from "./routes/contactRoutes.js";
 import groupMessageRoutes from "./routes/groupMessageRoutes.js";
-import chatRoutes from "./routes/chatRoutes.js";
 import groupRoutes from "./routes/groupRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import memberRoutes from "./routes/memberRoutes.js";
@@ -19,12 +17,10 @@ import inviteRoutes from "./routes/inviteRoutes.js";
 
 dotenv.config();
 
-// Conectar Base de Datos
 connectMongoDB();
 
 const app = express();
 
-// Middlewares
 app.use(
     cors({
         origin: ['http://localhost:5173', 'https://whatsappmessengerfinal.onrender.com'],
@@ -35,7 +31,6 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ✅ RUTA RAIZ 
 app.get("/", (req, res) => {
     res.json({
         message: "🚀 WhatsApp Messenger Backend API",
@@ -50,7 +45,6 @@ app.get("/", (req, res) => {
     });
 });
 
-// ✅ HEALTH CHECK
 app.get("/api/health", (req, res) => {
     res.json({ 
         ok: true, 
@@ -60,7 +54,6 @@ app.get("/api/health", (req, res) => {
     });
 });
 
-// ✅ ENDPOINT DE DEBUG
 app.get("/api/debug", (req, res) => {
     res.json({
         nodeEnv: process.env.NODE_ENV,
@@ -76,13 +69,11 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api/direct-message", DirectMessageRoutes);
-app.use("/api/chat", chatRoutes);
 app.use("/api/contacts", contactRoutes);
 app.use("/api/group-message", groupMessageRoutes);
 app.use("/api/member", memberRoutes);
 app.use("/api/invite", inviteRoutes);
 
-// ✅ CORREGIDO: Manejo de errores 404 (usa string "*")
 app.use((req, res) => {
     res.status(404).json({
         success: false,
@@ -90,7 +81,6 @@ app.use((req, res) => {
     });
 });
 
-// ✅ Manejo global de errores
 app.use((error, req, res, next) => {
     console.error("💥 Error del servidor:", error);
     res.status(500).json({
@@ -102,7 +92,6 @@ app.use((error, req, res, next) => {
     });
 });
 
-// HTTP + Socket
 const server = http.createServer(app);
 
 const io = new Server(server, {
@@ -121,7 +110,6 @@ io.on("connection", (socket) => {
     });
 });
 
-// Iniciar servidor
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {

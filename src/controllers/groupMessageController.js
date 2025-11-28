@@ -1,81 +1,41 @@
-import GroupMessageRepository from "../repositories/groupMessageRepository.js";
+import GroupMessage from "../models/GroupMessage.model.js";
+import Group from "../models/Group.model.js";
 
-class GroupMessageController {
-
-    static async sendMessage(req, res) {
-        try {
-            const { content } = req.body; // ✅ ahora se llama "content"
-            const { groupId } = req.params;
-            const senderId = req.user._id;
-
-            const msg = await GroupMessageRepository.sendGroupMessage(senderId, groupId, content);
-
-            res.status(201).json({
-                success: true,
-                message: "Mensaje enviado correctamente",
-                data: msg
-            });
-
-        } catch (error) {
-            console.error("GroupMessageController - sendMessage:", error);
-            res.status(400).json({ success: false, message: error.message });
-        }
-    }
+export default class GroupMessageController {
 
     static async getMessages(req, res) {
         try {
             const { groupId } = req.params;
-            const page = parseInt(req.query.page) || 1;
-            const limit = parseInt(req.query.limit) || 25;
 
-            const result = await GroupMessageRepository.getGroupMessages(groupId, page, limit);
+            const messages = await GroupMessage.find({ groupId })
+                .populate("sender", "username email")
+                .sort({ createdAt: 1 });
 
-            res.status(200).json({
-                success: true,
-                data: result.messages,
-                pagination: result.pagination
+            return res.json({ success: true, data: messages });
+
+        } catch (error) {
+            console.error("GM getMessages error:", error);
+            return res.status(500).json({ success: false, message: "Error obteniendo mensajes del grupo" });
+        }
+    }
+
+    static async sendMessage(req, res) {
+        try {
+            const sender = req.user._id;
+            const { groupId } = req.params;
+            const { message } = req.body;
+
+            const newMsg = await GroupMessage.create({
+                groupId,
+                sender,
+                content: message
             });
 
+            return res.status(201).json({ success: true, data: newMsg });
+
         } catch (error) {
-            console.error("GroupMessageController - getMessages:", error);
-            res.status(500).json({ success: false, message: error.message });
-        }
-    }
-
-    static async updateMessage(req, res) {
-        try {
-            const { messageId } = req.params;
-            const senderId = req.user._id;
-            const { content } = req.body;
-
-            const updated = await GroupMessageRepository.updateMessage(messageId, senderId, content);
-
-            if (!updated)
-                return res.status(403).json({ success: false, message: "No puedes editar este mensaje" });
-
-            res.status(200).json({ success: true, message: "Mensaje actualizado", data: updated });
-        } catch (error) {
-            console.error("GroupMessageController - updateMessage:", error);
-            res.status(400).json({ success: false, message: error.message });
-        }
-    }
-
-    static async deleteMessage(req, res) {
-        try {
-            const { messageId } = req.params;
-            const senderId = req.user._id;
-
-            const deleted = await GroupMessageRepository.deleteMessage(messageId, senderId);
-
-            if (!deleted)
-                return res.status(403).json({ success: false, message: "No puedes eliminar este mensaje" });
-
-            res.status(200).json({ success: true, message: "Mensaje eliminado" });
-        } catch (error) {
-            console.error("GroupMessageController - deleteMessage:", error);
-            res.status(400).json({ success: false, message: error.message });
+            console.error("GM sendMessage error:", error);
+            return res.status(500).json({ success: false, message: "Error enviando mensaje" });
         }
     }
 }
-
-export default GroupMessageController;
