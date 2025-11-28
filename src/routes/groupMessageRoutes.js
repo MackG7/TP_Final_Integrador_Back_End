@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { protect } from "../middleware/authMiddleware.js";
-import GroupMessageController from "../controllers/GroupMessageController.js";
+import GroupMessageController from "../controllers/groupMessageController.js";
 
 const router = Router();
 router.use(protect);
