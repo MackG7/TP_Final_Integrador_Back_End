@@ -4,9 +4,6 @@ import Group from "../models/Group.model.js";
 
 class GroupController {
 
-    /* ============================================================
-    CREATE - Crear grupo (CORREGIDO)
-    ============================================================ */
     static async createGroup(req, res) {
         try {
             const userId = req.user._id;
@@ -19,21 +16,17 @@ class GroupController {
                 });
             }
 
-            // ✅ CORRECCIÓN: Usar createdBy en lugar de admin
-            // ✅ CORRECCIÓN: Estructura correcta para members
             const newGroup = await Group.create({
                 name,
                 description: description || "",
                 url_img: url_img || "",
-                createdBy: userId,  // ✅ Campo correcto
+                createdBy: userId, 
                 members: [
-                    // El creador como admin
                     {
                         userId: userId,
                         role: "admin",
                         joinedAt: new Date()
                     },
-                    // Los demás miembros
                     ...(members || []).map(memberId => ({
                         userId: memberId,
                         role: "member", 
@@ -62,9 +55,6 @@ class GroupController {
         }
     }
 
-    /* ============================================================
-    READ - Obtener mis grupos
-    ============================================================ */
     static async getMyGroups(req, res) {
         try {
             const userId = req.user._id;
@@ -100,9 +90,6 @@ class GroupController {
         }
     }
 
-    /* ============================================================
-    DEBUG - Diagnóstico de grupos
-    ============================================================ */
     static async debugMyGroups(req, res) {
         try {
             const userId = req.user._id;
@@ -139,9 +126,6 @@ class GroupController {
         }
     }
 
-    /* ============================================================
-    DEBUG - Verificar acceso a un grupo específico
-    ============================================================ */
     static async debugGroupAccess(req, res) {
         try {
             const userId = req.user._id;
@@ -184,9 +168,6 @@ class GroupController {
         }
     }
 
-    /* ============================================================
-    READ - Obtener grupo por ID
-    ============================================================ */
     static async getGroupById(req, res) {
         try {
             const { groupId } = req.params;
@@ -215,9 +196,6 @@ class GroupController {
         }
     }
 
-    /* ============================================================
-    UPDATE - Actualizar grupo
-    ============================================================ */
     static async updateGroup(req, res) {
         try {
             const { groupId } = req.params;
@@ -248,9 +226,6 @@ class GroupController {
         }
     }
 
-    /* ============================================================
-    DELETE - Eliminar grupo
-    ============================================================ */
     static async deleteGroup(req, res) {
         try {
             const { groupId } = req.params;
@@ -266,7 +241,6 @@ class GroupController {
                 });
             }
 
-            // Verificar que el usuario es el creador
             if (group.createdBy._id.toString() !== userId.toString()) {
                 return res.status(403).json({
                     success: false,
@@ -299,9 +273,6 @@ class GroupController {
         }
     }
 
-    /* ============================================================
-    ADD MEMBER - Agregar usuario al grupo
-    ============================================================ */
     static async addMember(req, res) {
         try {
             const { groupId } = req.params;
@@ -332,9 +303,83 @@ class GroupController {
         }
     }
 
-    /* ============================================================
-    REMOVE MEMBER - Sacar usuario del grupo
-    ============================================================ */
+    static async addMemberToGroup(req, res) {
+        try {
+            const { groupId } = req.params;
+            const { userId } = req.body;
+            const currentUserId = req.user._id;
+
+            console.log(`👥 Agregando usuario ${userId} al grupo ${groupId} por ${currentUserId}`);
+
+            const group = await Group.findById(groupId)
+                .populate("members.userId", "username email avatar")
+                .populate("createdBy", "username email");
+
+            if (!group) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Grupo no encontrado"
+                });
+            }
+
+            // Verificar que el usuario actual es admin del grupo
+            const isAdmin = group.members.some(member => 
+                (member.userId._id.toString() === currentUserId.toString() || 
+                 member.userId.toString() === currentUserId.toString()) && 
+                member.role === 'admin'
+            );
+
+            if (!isAdmin) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Solo los administradores pueden agregar miembros"
+                });
+            }
+
+            // Verificar si el usuario ya es miembro
+            const isAlreadyMember = group.members.some(member => 
+                (member.userId._id.toString() === userId.toString() ||
+                 member.userId.toString() === userId.toString())
+            );
+
+            if (isAlreadyMember) {
+                return res.status(400).json({
+                    success: false,
+                    message: "El usuario ya es miembro del grupo"
+                });
+            }
+
+            // Agregar el nuevo miembro
+            group.members.push({
+                userId: userId,
+                role: 'member',
+                joinedAt: new Date()
+            });
+
+            await group.save();
+            
+            // Volver a populate para devolver datos actualizados
+            await group.populate('members.userId', 'username email avatar');
+            await group.populate('createdBy', 'username email');
+
+            console.log(`✅ Usuario ${userId} agregado exitosamente al grupo ${group.name}`);
+
+            return res.json({
+                success: true,
+                message: "Usuario agregado al grupo exitosamente",
+                data: group
+            });
+
+        } catch (error) {
+            console.error("❌ Error agregando miembro al grupo:", error);
+            return res.status(500).json({
+                success: false,
+                message: "Error al agregar usuario al grupo",
+                error: error.message
+            });
+        }
+    }
+
     static async removeMember(req, res) {
         try {
             const { groupId } = req.params;
@@ -365,9 +410,6 @@ class GroupController {
         }
     }
 
-    /* ============================================================
-    EMERGENCY FIX - Reparar membresías malas
-    ============================================================ */
     static async emergencyFix(req, res) {
         try {
             const userId = req.user._id;

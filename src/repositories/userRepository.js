@@ -1,71 +1,133 @@
-import User from "../models/User.model.js"
+import User from "../models/User.model.js";
 
 class UserRepository {
 
-    // CREATE - Crear usuario
-    static async createUser(username, email, password) {
-        // Lógica para crear el usuario en la base de datos
+    static async createUser(userData) {
         const user = await User.create({
-            username: username,
-            email: email,
-            password: password,
+            username: userData.username,
+            email: userData.email,
+            password: userData.password,
             verified_email: false,
             isActive: true
-        })
-        return user
+        });
+        return user;
     }
 
-    // READ - Buscar usuario por ID
     static async getById(user_id) {
-        const user_found = await User.findById(user_id)
-        return user_found
+        const user_found = await User.findById(user_id);
+        return user_found;
     }
 
-    // READ - Buscar usuario por email
     static async getByEmail(email) {
-        const user = await User.findOne({ email: email })
-        return user
+        const user = await User.findOne({ email: email });
+        return user;
     }
 
-    // UPDATE - Actualizar usuario por ID
+    static async findUserByEmail(email) {
+        try {
+            const user = await User.findOne({ 
+                email: { $regex: new RegExp(`^${email}$`, 'i') } 
+            })
+            .select('_id username email avatar isActive')
+            .lean();
+            return user;
+        } catch (error) {
+            console.error("UserRepository - Error en findUserByEmail:", error);
+            throw error;
+        }
+    }
+
     static async updateById(user_id, new_values) {
         const user_updated = await User.findByIdAndUpdate(
             user_id,
             new_values,
-            { new: true } // Retorna el usuario actualizado
-        )
-        return user_updated
+            { new: true }
+        );
+        return user_updated;
     }
 
-    // DELETE - Eliminar usuario (borrado lógico o físico)
     static async deleteById(user_id) {
-        await User.findByIdAndDelete(user_id)
-        return true
+        await User.findByIdAndDelete(user_id);
+        return true;
     }
 
     static async getByVerificationToken(token) {
-    try {
-        return await UserModel.findOne({ 
-            verification_token: token 
-        })
-    } catch (error) {
-        console.error("Error buscando usuario por token:", error)
-        throw error
+        try {
+            return await User.findOne({ 
+                verification_token: token 
+            });
+        } catch (error) {
+            console.error("Error buscando usuario por token:", error);
+            throw error;
+        }
+    }
+
+    static async updateUser(userId, updateData) {
+        try {
+            return await User.findByIdAndUpdate(
+                userId,
+                updateData,
+                { new: true } 
+            );
+        } catch (error) {
+            console.error("Error actualizando usuario:", error);
+            throw error;
+        }
+    }
+
+    static async getUserById(userId) {
+        try {
+            return await User.findById(userId);
+        } catch (error) {
+            console.error("Error obteniendo usuario por ID:", error);
+            throw error;
+        }
+    }
+
+    static async getAllUsers(page = 1, limit = 10, filters = {}) {
+        try {
+            const skip = (page - 1) * limit;
+            const query = {};
+            
+            if (filters.name) {
+                query.username = { $regex: filters.name, $options: 'i' };
+            }
+            if (filters.email) {
+                query.email = { $regex: filters.email, $options: 'i' };
+            }
+
+            const users = await User.find(query)
+                .select('-password')
+                .skip(skip)
+                .limit(limit)
+                .lean();
+
+            const total = await User.countDocuments(query);
+
+            return {
+                users,
+                pagination: {
+                    page,
+                    limit,
+                    total,
+                    pages: Math.ceil(total / limit)
+                }
+            };
+        } catch (error) {
+            console.error("Error obteniendo usuarios:", error);
+            throw error;
+        }
+    }
+
+    static async deleteUser(userId) {
+        try {
+            await User.findByIdAndDelete(userId);
+            return { message: "Usuario eliminado correctamente" };
+        } catch (error) {
+            console.error("Error eliminando usuario:", error);
+            throw error;
+        }
     }
 }
 
-static async updateUser(userId, updateData) {
-    try {
-        return await UserModel.findByIdAndUpdate(
-            userId,
-            updateData,
-            { new: true } 
-        )
-    } catch (error) {
-        console.error("Error actualizando usuario:", error)
-        throw error
-    }
-}
-}
-
-export default UserRepository
+export default UserRepository;

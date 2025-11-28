@@ -1,4 +1,7 @@
 import ContactRepository from "../repositories/contactRepository.js";
+import Invite from "../models/Invite.model.js";
+import User from "../models/User.model.js";
+import { EmailService } from "../services/email.service.js";
 
 export default class ContactController {
 
@@ -17,16 +20,82 @@ export default class ContactController {
 
     static async createInviteLink(req, res) {
         try {
+            const { email } = req.body; // Recibimos el email del frontend
             const ownerId = req.user._id;
-            const token = Buffer.from(ownerId + "-" + Date.now()).toString("base64");
 
-            return res.status(201).json({
-                ok: true,
-                data: { token }
+            if (!email) {
+                return res.status(400).json({
+                    ok: false,
+                    message: "El email es requerido"
+                });
+            }
+
+            // Validar formato de email
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                return res.status(400).json({
+                    ok: false,
+                    message: "El formato del email no es válido"
+                });
+            }
+
+            // Generar token único
+            const crypto = await import('crypto');
+            const token = crypto.randomBytes(32).toString('hex');
+
+            // Crear invitación en BD
+            const invite = await Invite.create({
+                token,
+                ownerId: ownerId,
+                invitedEmail: email,
+                expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 horas
             });
 
+            // Generar enlace de invitación
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+            const inviteLink = `${frontendUrl}/register?ref=${token}`;
+
+            // Obtener info del usuario que invita
+            const ownerUser = await User.findById(ownerId);
+            const ownerName = ownerUser?.username || ownerUser?.email || "Un usuario";
+
+            // Enviar email de invitación usando Resend
+            try {
+                await EmailService.sendInvitationEmail(email, ownerName, inviteLink);
+
+                console.log(`✅ Invitación enviada a: ${email}`);
+
+                return res.status(201).json({
+                    ok: true,
+                    data: {
+                        token,
+                        link: inviteLink,
+                        invitedEmail: email,
+                        message: "Invitación creada y enviada correctamente"
+                    }
+                });
+
+            } catch (emailError) {
+                console.error('❌ Error enviando email:', emailError);
+
+                // Continuamos aunque falle el email, pero devolvemos el link
+                return res.status(201).json({
+                    ok: true,
+                    data: {
+                        token,
+                        link: inviteLink,
+                        invitedEmail: email,
+                        warning: "Invitación creada pero el email no pudo ser enviado. Comparte el enlace manualmente."
+                    }
+                });
+            }
+
         } catch (err) {
-            return res.status(400).json({ ok: false, message: err.message });
+            console.error('Error en createInviteLink:', err);
+            return res.status(500).json({
+                ok: false,
+                message: "Error al crear la invitación: " + err.message
+            });
         }
     }
 
@@ -34,20 +103,40 @@ export default class ContactController {
         try {
             const { token } = req.params;
 
-            const invite = await Invite.findOne({ token, used: false });
-            if (!invite) return res.status(404).json({ ok: false, message: "Invite inválido o usado" });
+            const invite = await Invite.findOne({
+                token,
+                used: false,
+                expiresAt: { $gt: new Date() } // Verificar que no haya expirado
+            });
 
-            const ownerUser = await User.findById(invite.owner);
-            if (!ownerUser) return res.status(404).json({ ok: false, message: "Owner no existe" });
+            if (!invite) {
+                return res.status(404).json({
+                    ok: false,
+                    message: "Invitación inválida, usada o expirada"
+                });
+            }
+
+            const ownerUser = await User.findById(invite.ownerId);
+            if (!ownerUser) {
+                return res.status(404).json({
+                    ok: false,
+                    message: "El usuario que te invitó ya no existe"
+                });
+            }
 
             return res.json({
                 ok: true,
                 invitedEmail: invite.invitedEmail,
-                ownerName: ownerUser.username || ownerUser.email
+                ownerName: ownerUser.username || ownerUser.email,
+                ownerId: ownerUser._id
             });
 
         } catch (e) {
-            return res.status(500).json({ ok: false, message: e.message });
+            console.error('Error en resolveInvitePublic:', e);
+            return res.status(500).json({
+                ok: false,
+                message: "Error al validar la invitación"
+            });
         }
     }
 

@@ -5,7 +5,6 @@ export default class ContactRepository {
 
     static async addContact(ownerId, email, alias) {
 
-        // user al que quiero agregar
         const contactUser = await User.findOne({ email });
 
         if(!contactUser){
@@ -16,7 +15,7 @@ export default class ContactRepository {
             throw new Error("No puedes agregarte a ti mismo");
         }
 
-        // si ya existe pero desactivado → reactivo
+        
         let existing = await Contact.findOne({ owner: ownerId, contactUser: contactUser._id });
 
         if(existing){

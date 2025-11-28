@@ -18,8 +18,9 @@ router.get('/:groupId', protect, GroupController.getGroupById);
 router.post('/', protect, GroupController.createGroup);
 router.put('/:groupId', protect, GroupController.updateGroup);
 router.delete('/:groupId', protect, GroupController.deleteGroup);
-router.post('/:groupId/members', protect, GroupController.addMember);
+router.post('/:groupId/members/add', protect, GroupController.addMemberToGroup);
 router.delete('/:groupId/members', protect, GroupController.removeMember);
 router.post('/emergency-fix', protect, GroupController.emergencyFix);
+
 
 export default router;
