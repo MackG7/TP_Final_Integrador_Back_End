@@ -1,8 +1,7 @@
-import DirectMessage from "../models/directMessage.model";
+import DirectMessage from "../models/directMessage.model.js";
 
 export default class DirectMessageController {
 
-    // GET conversacion entre logged user y otro userB
     static async getConversation(req, res) {
         try {
             const userA = req.user._id;
@@ -25,7 +24,6 @@ export default class DirectMessageController {
         }
     }
 
-    // POST enviar mensaje DM
     static async sendMessage(req, res) {
         try {
             const sender = req.user._id;
