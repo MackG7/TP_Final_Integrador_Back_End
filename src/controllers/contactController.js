@@ -20,7 +20,7 @@ export default class ContactController {
 
     static async createInviteLink(req, res) {
         try {
-            const { email } = req.body; // Recibimos el email del frontend
+            const { email } = req.body; 
             const ownerId = req.user._id;
 
             if (!email) {
@@ -30,7 +30,6 @@ export default class ContactController {
                 });
             }
 
-            // Validar formato de email
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(email)) {
                 return res.status(400).json({
@@ -39,31 +38,24 @@ export default class ContactController {
                 });
             }
 
-            // Generar token único
             const crypto = await import('crypto');
             const token = crypto.randomBytes(32).toString('hex');
 
-            // Crear invitación en BD
             const invite = await Invite.create({
                 token,
                 ownerId: ownerId,
                 invitedEmail: email,
-                expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 horas
+                expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
             });
 
-            // Generar enlace de invitación
             const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
             const inviteLink = `${frontendUrl}/register?ref=${token}`;
 
-            // Obtener info del usuario que invita
             const ownerUser = await User.findById(ownerId);
             const ownerName = ownerUser?.username || ownerUser?.email || "Un usuario";
 
-            // Enviar email de invitación usando Resend
             try {
                 await EmailService.sendInvitationEmail(email, ownerName, inviteLink);
-
-                console.log(`✅ Invitación enviada a: ${email}`);
 
                 return res.status(201).json({
                     ok: true,
@@ -76,9 +68,8 @@ export default class ContactController {
                 });
 
             } catch (emailError) {
-                console.error('❌ Error enviando email:', emailError);
+                console.error('Error enviando email:', emailError);
 
-                // Continuamos aunque falle el email, pero devolvemos el link
                 return res.status(201).json({
                     ok: true,
                     data: {
@@ -106,7 +97,7 @@ export default class ContactController {
             const invite = await Invite.findOne({
                 token,
                 used: false,
-                expiresAt: { $gt: new Date() } // Verificar que no haya expirado
+                expiresAt: { $gt: new Date() } 
             });
 
             if (!invite) {

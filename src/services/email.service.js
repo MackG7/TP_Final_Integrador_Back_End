@@ -26,10 +26,9 @@ export const EmailService = {
 
             <p style="margin-top:20px;">Si no solicitaste esta verificación, puedes ignorar este mensaje.</p>
         `;
-
         try {
             const result = await resend.emails.send({
-                from: process.env.EMAIL_FROM, // debe ser dominio verificado
+                from: process.env.EMAIL_FROM, 
                 to: email,
                 subject: "Verifica tu cuenta",
                 html
@@ -90,7 +89,7 @@ export const EmailService = {
 
         try {
             const result = await resend.emails.send({
-                from: process.env.EMAIL_FROM, // tu dominio verificado en Resend
+                from: process.env.EMAIL_FROM, 
                 to: email,
                 subject: "¡Invitación para unirte a WhatsApp!",
                 html
